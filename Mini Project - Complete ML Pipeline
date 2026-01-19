@@ -1,0 +1,143 @@
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
+
+print("\n" + "="*60)
+print("AIM 10: Mini Project - Complete ML Pipeline")
+print("="*60)
+print("Project: Iris Species Classification with Multiple Models")
+print("="*60)
+
+# Step 1: Load and explore data
+print("\n1. DATA LOADING AND EXPLORATION")
+print("-" * 40)
+iris = load_iris()
+df_iris = pd.DataFrame(iris.data, columns=iris.feature_names)
+df_iris['species'] = iris.target
+print(f"Dataset Shape: {df_iris.shape}")
+print(f"\nFirst 5 rows:\n{df_iris.head()}")
+print(f"\nDataset Statistics:\n{df_iris.describe()}")
+
+# Step 2: Data preprocessing
+print("\n2. DATA PREPROCESSING")
+print("-" * 40)
+X = iris.data
+y = iris.target
+
+# Standardization
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+print("Features standardized")
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+print(f"Training set size: {X_train.shape[0]}")
+print(f"Test set size: {X_test.shape[0]}")
+
+# Step 3: Model building and evaluation
+print("\n3. MODEL BUILDING AND EVALUATION")
+print("-" * 40)
+
+models = {
+    'Logistic Regression': LogisticRegression(max_iter=200),
+    'KNN': KNeighborsClassifier(n_neighbors=5),
+    'Naive Bayes': GaussianNB(),
+    'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42)
+}
+
+results = {}
+
+for name, model in models.items():
+    # Train model
+    model.fit(X_train, y_train)
+    
+    # Predictions
+    y_pred = model.predict(X_test)
+    
+    # Cross-validation
+    cv_scores = cross_val_score(model, X_scaled, y, cv=5)
+    
+    # Store results
+    results[name] = {
+        'accuracy': accuracy_score(y_test, y_pred),
+        'cv_mean': cv_scores.mean(),
+        'cv_std': cv_scores.std()
+    }
+    
+    print(f"\n{name}:")
+    print(f"  Test Accuracy: {results[name]['accuracy']:.4f}")
+    print(f"  CV Accuracy: {results[name]['cv_mean']:.4f} (+/- {results[name]['cv_std']:.4f})")
+
+# Step 4: Results visualization
+print("\n4. RESULTS VISUALIZATION")
+print("-" * 40)
+
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+# Plot 1: Model comparison
+model_names = list(results.keys())
+accuracies = [results[m]['accuracy'] for m in model_names]
+
+axes[0, 0].barh(model_names, accuracies)
+axes[0, 0].set_xlabel('Accuracy')
+axes[0, 0].set_title('Model Comparison - Test Accuracy')
+axes[0, 0].set_xlim([0.8, 1.0])
+
+# Plot 2: Feature importance (using Random Forest)
+rf_model = models['Random Forest']
+feature_importance = rf_model.feature_importances_
+axes[0, 1].barh(iris.feature_names, feature_importance)
+axes[0, 1].set_xlabel('Importance')
+axes[0, 1].set_title('Feature Importance (Random Forest)')
+
+# Plot 3: Confusion matrix for best model
+best_model_name = max(results, key=lambda x: results[x]['accuracy'])
+best_model = models[best_model_name]
+y_pred_best = best_model.predict(X_test)
+cm = confusion_matrix(y_test, y_pred_best)
+
+im = axes[1, 0].imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+axes[1, 0].set_title(f'Confusion Matrix - {best_model_name}')
+axes[1, 0].set_xlabel('Predicted Label')
+axes[1, 0].set_ylabel('True Label')
+tick_marks = np.arange(len(iris.target_names))
+axes[1, 0].set_xticks(tick_marks)
+axes[1, 0].set_yticks(tick_marks)
+axes[1, 0].set_xticklabels(iris.target_names, rotation=45)
+axes[1, 0].set_yticklabels(iris.target_names)
+
+# Add text annotations
+for i in range(cm.shape[0]):
+    for j in range(cm.shape[1]):
+        axes[1, 0].text(j, i, format(cm[i, j], 'd'),
+                       ha="center", va="center",
+                       color="white" if cm[i, j] > cm.max() / 2 else "black")
+
+# Plot 4: PCA visualization with clusters
+pca_2d = PCA(n_components=2)
+X_pca = pca_2d.fit_transform(X_scaled)
+
+for i in range(3):
+    axes[1, 1].scatter(X_pca[y == i, 0], X_pca[y == i, 1], 
+                      label=iris.target_names[i], alpha=0.6)
+axes[1, 1].set_xlabel('First Principal Component')
+axes[1, 1].set_ylabel('Second Principal Component')
+axes[1, 1].set_title('PCA Visualization of Classes')
+axes[1, 1].legend()
+axes[1, 1].grid(True)
+
+plt.tight_layout()
+plt.savefig('mini_project_results.png')
+print("Complete results visualization saved as 'mini_project_results.png'")
+
+# Step 5: Final summary
+print("\n5. PROJECT SUMMARY")
+print("=" * 60)
+print(f"Best Model: {best_model_name}")
+print(f"Best Accuracy: {results[best_model_name]['accuracy']:.4f}")
+print(f"\nAll models trained and evaluated successfully!")
+print(f"Total number of models compared: {len(models)}")
+print("=" * 60)
+
+print("\n✓ All 10 aims completed successfully!")
+print("✓ Generated plots: linear_regression.png, pca_plots.png, pca_2d.png,")
+print("  knn_k_analysis.png, kmeans_clustering.png, mini_project_results.png")
